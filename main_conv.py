@@ -7,7 +7,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-REBUILD_DATA = True # set to true to one once, then back to false unless you want to change something in your training data.
+
+if torch.cuda.is_available():
+    device = torch.device("cuda:0")  # you can continue going on here, like cuda:1 cuda:2....etc.
+    print("Running on the GPU")
+else:
+    device = torch.device("cpu")
+    print("Running on the CPU")
+
+REBUILD_DATA = False # set to true to one once, then back to false unless you want to change something in your training data.
 
 class DogsVSCats():
     IMG_SIZE = 50
@@ -79,7 +87,7 @@ class Net(nn.Module):
         return F.softmax(x, dim=1)
 
 
-net = Net()
+net = Net().to(device)
 print(net)
 
 if REBUILD_DATA:
@@ -106,18 +114,25 @@ test_X = X[-val_size:]
 test_y = y[-val_size:]
 
 BATCH_SIZE = 50
-EPOCHS = 1
+EPOCHS = 3
+
+
 
 
 def train(net):
-    for epoch in range(EPOCHS):
-        for i in tqdm(range(0, len(train_X), BATCH_SIZE)): # from 0, to the len of x, stepping BATCH_SIZE at a time. [:50] ..for now just to dev
+    optimizer = optim.Adam(net.parameters(), lr=0.001)
+    BATCH_SIZE = 100
+    EPOCHS = 3
+    for epoch in tqdm(range(EPOCHS)):
+        for i in range(0, len(train_X), BATCH_SIZE): # from 0, to the len of x, stepping BATCH_SIZE at a time. [:50] ..for now just to dev
             #print(f"{i}:{i+BATCH_SIZE}")
             batch_X = train_X[i:i+BATCH_SIZE].view(-1, 1, 50, 50)
             batch_y = train_y[i:i+BATCH_SIZE]
 
+            batch_X, batch_y = batch_X.to(device), batch_y.to(device)
             net.zero_grad()
 
+            optimizer.zero_grad()   # zero the gradient buffers
             outputs = net(batch_X)
             loss = loss_function(outputs, batch_y)
             loss.backward()
@@ -125,14 +140,19 @@ def train(net):
 
         print(f"Epoch: {epoch}. Loss: {loss}")
 
+train(net)
+
+
+test_X.to(device)
+test_y.to(device)
 
 def test(net):
     correct = 0
     total = 0
     with torch.no_grad():
         for i in tqdm(range(len(test_X))):
-            real_class = torch.argmax(test_y[i])
-            net_out = net(test_X[i].view(-1, 1, 50, 50))[0]  # returns a list,
+            real_class = torch.argmax(test_y[i]).to(device)
+            net_out = net(test_X[i].view(-1, 1, 50, 50).to(device))[0]  # returns a list,
             predicted_class = torch.argmax(net_out)
 
             if predicted_class == real_class:
@@ -140,3 +160,5 @@ def test(net):
             total += 1
 
     print("Accuracy: ", round(correct/total, 3))
+
+test(net)
