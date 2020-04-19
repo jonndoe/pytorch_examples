@@ -58,9 +58,9 @@ class DogsVSCats():
 class Net(nn.Module):
     def __init__(self):
         super().__init__() # just run the init of parent class (nn.Module)
-        self.conv1 = nn.Conv2d(1, 32, 5) # input is 1 image, 32 output channels, 5x5 kernel / window
-        self.conv2 = nn.Conv2d(32, 64, 5) # input is 32, bc the first layer output 32. Then we say the output will be 64 channels, 5x5 kernel / window
-        self.conv3 = nn.Conv2d(64, 128, 5)
+        self.conv1 = nn.Conv2d(1, 46, 5) # input is 1 image, 32 output channels, 5x5 kernel / window
+        self.conv2 = nn.Conv2d(46, 82, 5) # input is 32, bc the first layer output 32. Then we say the output will be 64 channels, 5x5 kernel / window
+        self.conv3 = nn.Conv2d(82, 128, 5)
 
         x = torch.randn(50,50).view(-1,1,50,50)
         self._to_linear = None
@@ -130,15 +130,20 @@ def train(net):
             batch_y = train_y[i:i+BATCH_SIZE]
 
             batch_X, batch_y = batch_X.to(device), batch_y.to(device)
+
             net.zero_grad()
+            outputs = net(batch_X)
 
             optimizer.zero_grad()   # zero the gradient buffers
-            outputs = net(batch_X)
+
+            matches = [torch.argmax(i)==torch.argmax(j) for i, j in zip(outputs, batch_y)]
+            in_sample_acc = matches.count(True)/len(matches)
+
             loss = loss_function(outputs, batch_y)
             loss.backward()
             optimizer.step()    # Does the update
-
         print(f"Epoch: {epoch}. Loss: {loss}")
+        print("In-sample acc:", round(in_sample_acc, 2))
 
 train(net)
 
@@ -162,3 +167,26 @@ def test(net):
     print("Accuracy: ", round(correct/total, 3))
 
 test(net)
+
+def batch_test(net):
+    BATCH_SIZE = 100
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        # np.random.shuffle(test_X)
+        # np.random.shuffle(test_y)
+
+        batch_X = test_X[:BATCH_SIZE].view(-1,1,50,50)
+        batch_y = test_y[:BATCH_SIZE]
+
+        batch_X, batch_y = batch_X.to(device), batch_y.to(device)
+
+        net.zero_grad()
+        outputs = net(batch_X)
+
+        matches = [torch.argmax(i)==torch.argmax(j) for i, j in zip(outputs, batch_y)]
+        acc = matches.count(True)/len(matches)
+
+        print("Batch Test Accuracy:", round(acc, 3))
+
+batch_test(net)
