@@ -117,33 +117,44 @@ BATCH_SIZE = 50
 EPOCHS = 3
 
 
+def fwd_pass(X, y, train=False):
 
+    if train:
+        net.zero_grad()
+    outputs = net(X)
+    matches = [torch.argmax(i)==torch.argmax(j) for i, j in zip(outputs, y)]
+    acc = matches.count(True)/len(matches)
+    loss = loss_function(outputs, y)
+
+    if train:
+        loss.backward()
+        optimizer.step()
+
+    return acc, loss
 
 def train(net):
     optimizer = optim.Adam(net.parameters(), lr=0.001)
     BATCH_SIZE = 100
     EPOCHS = 3
-    for epoch in tqdm(range(EPOCHS)):
-        for i in range(0, len(train_X), BATCH_SIZE): # from 0, to the len of x, stepping BATCH_SIZE at a time. [:50] ..for now just to dev
+    for epoch in range(EPOCHS):
+        for i in tqdm(range(0, len(train_X), BATCH_SIZE)): # from 0, to the len of x, stepping BATCH_SIZE at a time. [:50] ..for now just to dev
             #print(f"{i}:{i+BATCH_SIZE}")
             batch_X = train_X[i:i+BATCH_SIZE].view(-1, 1, 50, 50)
             batch_y = train_y[i:i+BATCH_SIZE]
 
             batch_X, batch_y = batch_X.to(device), batch_y.to(device)
 
-            net.zero_grad()
-            outputs = net(batch_X)
 
-            optimizer.zero_grad()   # zero the gradient buffers
 
-            matches = [torch.argmax(i)==torch.argmax(j) for i, j in zip(outputs, batch_y)]
-            in_sample_acc = matches.count(True)/len(matches)
 
-            loss = loss_function(outputs, batch_y)
-            loss.backward()
-            optimizer.step()    # Does the update
-        print(f"Epoch: {epoch}. Loss: {loss}")
-        print("In-sample acc:", round(in_sample_acc, 2))
+            #optimizer.zero_grad()   # zero the gradient buffers
+            acc, loss = fwd_pass(batch_X, batch_y, train=True)
+
+            print(f"Acc: {round(float(acc),2)} Loss: {round(float(loss),4)}")
+
+            if i == 5:
+                break
+            break
 
 train(net)
 
@@ -190,3 +201,5 @@ def batch_test(net):
         print("Batch Test Accuracy:", round(acc, 3))
 
 batch_test(net)
+
+
