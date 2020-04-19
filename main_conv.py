@@ -6,6 +6,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import time
+
+import matplotlib.pyplot as plt
+from matplotlib import style
 
 
 if torch.cuda.is_available():
@@ -16,6 +20,7 @@ else:
     print("Running on the CPU")
 
 REBUILD_DATA = False # set to true to one once, then back to false unless you want to change something in your training data.
+MODEL_NAME = f"model-{int(time.time())}"
 
 class DogsVSCats():
     IMG_SIZE = 50
@@ -136,25 +141,29 @@ def train(net):
     optimizer = optim.Adam(net.parameters(), lr=0.001)
     BATCH_SIZE = 100
     EPOCHS = 3
-    for epoch in range(EPOCHS):
-        for i in tqdm(range(0, len(train_X), BATCH_SIZE)): # from 0, to the len of x, stepping BATCH_SIZE at a time. [:50] ..for now just to dev
-            #print(f"{i}:{i+BATCH_SIZE}")
-            batch_X = train_X[i:i+BATCH_SIZE].view(-1, 1, 50, 50)
-            batch_y = train_y[i:i+BATCH_SIZE]
 
-            batch_X, batch_y = batch_X.to(device), batch_y.to(device)
+    with open("model.log", "a") as f:
+        for epoch in range(EPOCHS):
+            for i in tqdm(range(0, len(train_X), BATCH_SIZE)): # from 0, to the len of x, stepping BATCH_SIZE at a time. [:50] ..for now just to dev
+                #print(f"{i}:{i+BATCH_SIZE}")
+                batch_X = train_X[i:i+BATCH_SIZE].view(-1, 1, 50, 50)
+                batch_y = train_y[i:i+BATCH_SIZE]
+
+                batch_X, batch_y = batch_X.to(device), batch_y.to(device)
 
 
 
 
-            #optimizer.zero_grad()   # zero the gradient buffers
-            acc, loss = fwd_pass(batch_X, batch_y, train=True)
+                #optimizer.zero_grad()   # zero the gradient buffers
+                acc, loss = fwd_pass(batch_X, batch_y, train=True)
 
-            print(f"Acc: {round(float(acc),2)} Loss: {round(float(loss),4)}")
+                #print(f"Acc: {round(float(acc),2)} Loss: {round(float(loss),4)}")
+                f.write(f"{MODEL_NAME},{round(time.time(),3)}, in_sample, {round(float(acc),2)},{round(float(loss),4)}\n")
 
-            if i == 5:
+
+                if i == 5:
+                    break
                 break
-            break
 
 train(net)
 
@@ -184,8 +193,6 @@ def batch_test(net):
     correct = 0
     total = 0
     with torch.no_grad():
-        # np.random.shuffle(test_X)
-        # np.random.shuffle(test_y)
 
         batch_X = test_X[:BATCH_SIZE].view(-1,1,50,50)
         batch_y = test_y[:BATCH_SIZE]
