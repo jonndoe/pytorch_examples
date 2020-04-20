@@ -118,6 +118,10 @@ train_y = y[:-val_size]
 test_X = X[-val_size:]
 test_y = y[-val_size:]
 
+test_X.to(device)
+test_y.to(device)
+
+
 BATCH_SIZE = 50
 EPOCHS = 3
 
@@ -137,40 +141,46 @@ def fwd_pass(X, y, train=False):
 
     return acc, loss
 
+
+
+def test(size=32):
+    X, y = test_X[:size], test_y[:size]
+    val_acc, val_loss = fwd_pass(X.view(-1, 1, 50, 50).to(device), y.to(device))
+    return val_acc, val_loss
+
+#val_acc, val_loss = test(size=100)
+#print(val_acc, val_loss)
+
+
+print(MODEL_NAME)
 def train(net):
-    optimizer = optim.Adam(net.parameters(), lr=0.001)
     BATCH_SIZE = 100
-    EPOCHS = 3
+    EPOCHS = 5
 
     with open("model.log", "a") as f:
         for epoch in range(EPOCHS):
-            for i in tqdm(range(0, len(train_X), BATCH_SIZE)): # from 0, to the len of x, stepping BATCH_SIZE at a time. [:50] ..for now just to dev
-                #print(f"{i}:{i+BATCH_SIZE}")
-                batch_X = train_X[i:i+BATCH_SIZE].view(-1, 1, 50, 50)
+            for i in tqdm(range(0, len(train_X), BATCH_SIZE)):
+                batch_X = train_X[i:i+BATCH_SIZE].view(-1,1,50,50)
                 batch_y = train_y[i:i+BATCH_SIZE]
 
                 batch_X, batch_y = batch_X.to(device), batch_y.to(device)
 
-
-
-
-                #optimizer.zero_grad()   # zero the gradient buffers
                 acc, loss = fwd_pass(batch_X, batch_y, train=True)
 
-                #print(f"Acc: {round(float(acc),2)} Loss: {round(float(loss),4)}")
-                f.write(f"{MODEL_NAME},{round(time.time(),3)}, in_sample, {round(float(acc),2)},{round(float(loss),4)}\n")
-
-
-                if i == 5:
-                    break
-                break
+                #print(f"Acc: {round(float(acc),2)}  Loss: {round(float(loss),4)}")
+                #f.write(f"{MODEL_NAME},{round(time.time(),3)},train,{round(float(acc),2)},{round(float(loss),4)}\n")
+                # just to show the above working, and then get out:
+                if i % 50 == 0:
+                    val_acc, val_loss = test(size=100)
+                    f.write(f"{MODEL_NAME},{round(time.time(),3)},{round(float(acc),2)},{round(float(loss), 4)},{round(float(val_acc),2)},{round(float(val_loss),4)},{epoch}\n")
 
 train(net)
 
 
-test_X.to(device)
-test_y.to(device)
 
+
+
+'''
 def test(net):
     correct = 0
     total = 0
@@ -186,7 +196,14 @@ def test(net):
 
     print("Accuracy: ", round(correct/total, 3))
 
-test(net)
+#test(net)
+'''
+
+
+
+
+
+
 
 def batch_test(net):
     BATCH_SIZE = 100
@@ -215,7 +232,7 @@ from matplotlib import style
 
 style.use("ggplot")
 
-model_name = "model-1587331370"
+model_name = MODEL_NAME # grab whichever model name you want here. We could also just reference the MODEL_NAME if you're in a notebook still.
 
 
 def create_acc_loss_graph(model_name):
@@ -225,22 +242,32 @@ def create_acc_loss_graph(model_name):
     accuracies = []
     losses = []
 
+    val_accs = []
+    val_losses = []
+
     for c in contents:
         if model_name in c:
-            name, timestamp, sample_type, acc, loss = c.split(",")
+            name, timestamp, acc, loss, val_acc, val_loss, epoch = c.split(",")
 
-            times.append(timestamp)
-            accuracies.append(acc)
-            losses.append(loss)
+            times.append(float(timestamp))
+            accuracies.append(float(acc))
+            losses.append(float(loss))
+
+            val_accs.append(float(val_acc))
+            val_losses.append(float(val_loss))
+
 
     fig = plt.figure()
 
     ax1 = plt.subplot2grid((2,1), (0,0))
     ax2 = plt.subplot2grid((2,1), (1,0), sharex=ax1)
 
-    ax1.plot(times, accuracies, label="in_samp_acc")
+
+    ax1.plot(times, accuracies, label="acc")
+    ax1.plot(times, val_accs, label="val_acc")
     ax1.legend(loc=2)
-    ax2.plot(times, losses, label="in_samp_loss")
+    ax2.plot(times,losses, label="loss")
+    ax2.plot(times,val_losses, label="val_loss")
     ax2.legend(loc=2)
     plt.show()
 
