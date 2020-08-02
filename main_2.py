@@ -56,14 +56,26 @@ class Net(nn.Module):
         self.fc4 = nn.Linear(64, 10)
 
     def forward(self, x):
-        x = self.fc1(x)
-        x = self.fc2(x)
-        x = self.fc3(x)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
         x = self.fc4(x)
-        return x
+        return F.log_softmax(x, dim=1)
 
 net = Net()
 print(net)
+
+# for testing nn create random image
+X = torch.randn((28, 28))
+# flatten it for input
+# -1 means "any size of input data???"
+# -1 means that input can consist of any amount of pictures 28*28
+X = X.view(-1, 28*28)
+
+output = net(X)
+
+print(output)
+
 
 
 
