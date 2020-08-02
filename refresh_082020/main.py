@@ -22,6 +22,3 @@ print(v.view([1, 10]))
 # RE-ASSIGN AS NEW TENSOR:
 v = v.view([1, 10])
 print(v)
-
-
-
